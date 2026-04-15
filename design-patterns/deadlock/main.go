@@ -165,9 +165,33 @@ func DeadlockFixWithContext() {
 	wg.Wait()
 
 }
+
+func DeadlockFixWithBufferedChannels() {
+	ch1, ch2 := make(chan struct{}, 1), make(chan struct{}, 1)
+
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		ch1 <- struct{}{}
+		<-ch2
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		ch2 <- struct{}{}
+		<-ch1
+	}()
+
+	wg.Wait()
+}
 func main() {
 	// CreateDeadlock()
 	// DeadlockFixConsistentOrdering()
 	// DeadlockFixWithTimeout()
-	DeadlockFixWithContext()
+	// DeadlockFixWithContext()
+	DeadlockFixWithBufferedChannels()
 }
