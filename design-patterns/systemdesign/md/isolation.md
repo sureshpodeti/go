@@ -120,6 +120,57 @@ How MVCC stores versions (PostgreSQL style):
 
 ---
 
+## Snapshot Isolation vs MVCC — They're Not the Same Thing
+
+A common confusion: people use "Snapshot Isolation" and "MVCC" interchangeably. They're related but fundamentally different.
+
+```
+┌──────────────────────┬──────────────────────────────────────────────────┐
+│                      │ What is it?                                      │
+├──────────────────────┼──────────────────────────────────────────────────┤
+│ Snapshot Isolation    │ An isolation LEVEL — a behavioral guarantee.    │
+│                      │ "Your transaction sees a consistent snapshot     │
+│                      │  of the DB as of when it started."              │
+├──────────────────────┼──────────────────────────────────────────────────┤
+│ MVCC                 │ A concurrency control MECHANISM — an            │
+│                      │ implementation technique. "We keep multiple      │
+│                      │ versions of rows so readers and writers don't   │
+│                      │ block each other."                              │
+└──────────────────────┴──────────────────────────────────────────────────┘
+```
+
+Snapshot Isolation is the promise. MVCC is the most common way to deliver that promise.
+
+But MVCC is more general — it's used to implement multiple isolation levels, not just Snapshot Isolation:
+
+```
+MVCC can implement:
+  ├── Read Committed      → each STATEMENT gets a fresh snapshot
+  ├── Repeatable Read     → entire TRANSACTION gets one snapshot
+  ├── Snapshot Isolation   → transaction-level snapshot + first-committer-wins
+  └── Serializable (SSI)  → snapshot + conflict detection at commit time
+
+PostgreSQL uses MVCC for ALL its isolation levels.
+The difference is how/when the snapshot is taken and what conflicts are checked.
+```
+
+And in theory, Snapshot Isolation could be implemented without MVCC (e.g., copy-on-write at the page level), though that's uncommon in practice.
+
+```
+The relationship:
+
+  MVCC (mechanism) ──implements──▶ Snapshot Isolation (level)
+                                   Read Committed
+                                   Repeatable Read
+                                   Serializable (SSI)
+
+  Think of it like:
+    MVCC = the engine
+    Isolation level = the gear you're driving in
+```
+
+---
+
 ## Isolation Levels — From Weakest to Strongest
 
 SQL standard defines four isolation levels. Think of them as a dial — you trade correctness for performance.
@@ -246,10 +297,21 @@ Real-life analogy: Serializable is like a single-lane bridge. Cars (transactions
 │ CockroachDB          │ Serializable        │ Distributed, SSI-based       │
 │ Google Spanner       │ Serializable +      │ External consistency via     │
 │                      │ Linearizable        │ TrueTime (atomic clocks)     │
+├──────────────────────┼─────────────────────┼──────────────────────────────┤
+│ MongoDB              │ Read Uncommitted    │ Single-doc ops are atomic.   │
+│                      │                     │ Multi-doc txns (4.0+) use    │
+│                      │                     │ Snapshot Isolation.           │
+├──────────────────────┼─────────────────────┼──────────────────────────────┤
+│ Cassandra            │ No traditional      │ AP system (availability +    │
+│                      │ isolation           │ partition tolerance). Eventual│
+│                      │                     │ consistency by default. LWT  │
+│                      │                     │ (Paxos) gives linearizable   │
+│                      │                     │ consistency per-partition.    │
 └──────────────────────┴─────────────────────┴──────────────────────────────┘
 
 Most common default: Read Committed (PostgreSQL, Oracle, SQL Server)
 MySQL is the outlier with Repeatable Read as default.
+NoSQL databases like MongoDB and Cassandra don't map cleanly to SQL isolation levels — they have different tradeoff models entirely.
 ```
 
 
