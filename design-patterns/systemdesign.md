@@ -61,3 +61,8 @@ Location sensitive show/movies display
 
 Assume:
 No audium type theatres considered
+
+
+Get movies by unique movie_id
+
+select distinct m.* from shows as s inner join on movies as m where date >= TODAY() and data <= TODAY() + 7
