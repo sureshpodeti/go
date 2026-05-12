@@ -1,0 +1,823 @@
+# Virtualization & Containers
+
+## Overview
+
+Virtualization and containerization are fundamental technologies for modern cloud computing and software architecture. They provide isolation, portability, and efficient resource utilization.
+
+## Virtualization
+
+### What is Virtualization?
+
+Virtualization creates virtual versions of physical resources (CPU, memory, storage, network) allowing multiple operating systems to run on a single physical machine.
+
+```
+Physical Server vs Virtualization:
+
+Traditional (Physical):
+┌─────────────────────────────────────┐
+│         Application 1               │
+├─────────────────────────────────────┤
+│         Operating System            │
+├─────────────────────────────────────┤
+│         Physical Hardware           │
+└─────────────────────────────────────┘
+One OS per machine
+
+Virtualization:
+┌──────────┬──────────┬──────────┐
+│  App 1   │  App 2   │  App 3   │
+├──────────┼──────────┼──────────┤
+│  Guest   │  Guest   │  Guest   │
+│  OS 1    │  OS 2    │  OS 3    │
+├──────────┴──────────┴──────────┤
+│      Hypervisor (VMM)          │
+├────────────────────────────────┤
+│      Host Operating System     │
+├────────────────────────────────┤
+│      Physical Hardware         │
+└────────────────────────────────┘
+Multiple OS per machine
+```
+
+### Types of Hypervisors
+
+```
+Type 1 (Bare Metal):
+┌──────────┬──────────┬──────────┐
+│   VM 1   │   VM 2   │   VM 3   │
+│  Guest   │  Guest   │  Guest   │
+│   OS     │   OS     │   OS     │
+├──────────┴──────────┴──────────┤
+│      Hypervisor                │
+│  (ESXi, Hyper-V, KVM, Xen)     │
+├────────────────────────────────┤
+│      Physical Hardware         │
+└────────────────────────────────┘
+
+Characteristics:
+• Runs directly on hardware
+• Better performance
+• Lower overhead
+• Used in data centers
+• Examples: VMware ESXi, Microsoft Hyper-V, KVM
+
+Type 2 (Hosted):
+┌──────────┬──────────┬──────────┐
+│   VM 1   │   VM 2   │   VM 3   │
+│  Guest   │  Guest   │  Guest   │
+│   OS     │   OS     │   OS     │
+├──────────┴──────────┴──────────┤
+│      Hypervisor                │
+│  (VirtualBox, VMware Workstation)│
+├────────────────────────────────┤
+│      Host Operating System     │
+├────────────────────────────────┤
+│      Physical Hardware         │
+└────────────────────────────────┘
+
+Characteristics:
+• Runs on host OS
+• More overhead
+• Easier to use
+• Used for development/testing
+• Examples: VirtualBox, VMware Workstation
+```
+
+### Hardware-Assisted Virtualization
+
+```
+CPU Virtualization (Intel VT-x, AMD-V):
+
+┌─────────────────────────────────────┐
+│         CPU Privilege Rings         │
+│                                     │
+│  Ring 0: Hypervisor (VMM)           │
+│  ┌───────────────────────────────┐  │
+│  │ Ring 1: Guest OS Kernel       │  │
+│  │ ┌─────────────────────────┐   │  │
+│  │ │ Ring 3: Guest Apps      │   │  │
+│  │ └─────────────────────────┘   │  │
+│  └───────────────────────────────┘  │
+└─────────────────────────────────────┘
+
+Without Hardware Support:
+• Binary translation (slow)
+• Paravirtualization (requires OS modification)
+
+With Hardware Support:
+• Direct execution (fast)
+• Trap-and-emulate
+• No OS modification needed
+```
+
+### Memory Virtualization
+
+```
+Memory Virtualization Layers:
+
+Guest Virtual Address (GVA)
+         │
+         ▼
+┌─────────────────────────────────┐
+│   Guest Page Table              │
+│   (Managed by Guest OS)         │
+└────────────┬────────────────────┘
+             │
+             ▼
+Guest Physical Address (GPA)
+             │
+             ▼
+┌─────────────────────────────────┐
+│   Extended Page Table (EPT)     │
+│   or Nested Page Table (NPT)    │
+│   (Managed by Hypervisor)       │
+└────────────┬────────────────────┘
+             │
+             ▼
+Host Physical Address (HPA)
+
+Two-Level Translation:
+GVA → GPA → HPA
+
+Hardware Support (EPT/NPT):
+• Reduces overhead
+• No shadow page tables
+• Better performance
+```
+
+### I/O Virtualization
+
+```
+I/O Virtualization Approaches:
+
+1. Full Emulation:
+┌──────────┐
+│   VM     │
+│  Driver  │
+└────┬─────┘
+     │ Trap
+     ▼
+┌──────────┐
+│Hypervisor│
+│ Emulates │
+│ Device   │
+└────┬─────┘
+     │
+     ▼
+┌──────────┐
+│ Physical │
+│ Device   │
+└──────────┘
+Slow but compatible
+
+2. Paravirtualization:
+┌──────────┐
+│   VM     │
+│ Virtio   │
+│ Driver   │
+└────┬─────┘
+     │ Hypercall
+     ▼
+┌──────────┐
+│Hypervisor│
+│ Virtio   │
+│ Backend  │
+└────┬─────┘
+     │
+     ▼
+┌──────────┐
+│ Physical │
+│ Device   │
+└──────────┘
+Fast, requires guest support
+
+3. Direct Assignment (SR-IOV):
+┌──────────┐  ┌──────────┐
+│   VM 1   │  │   VM 2   │
+│  Driver  │  │  Driver  │
+└────┬─────┘  └────┬─────┘
+     │             │
+     └──────┬──────┘
+            │ Direct access
+            ▼
+┌─────────────────────────┐
+│   Physical Device       │
+│   (SR-IOV capable)      │
+│  ┌────┐ ┌────┐ ┌────┐  │
+│  │VF 1│ │VF 2│ │VF 3│  │
+│  └────┘ └────┘ └────┘  │
+└─────────────────────────┘
+Fastest, near-native performance
+```
+
+## Containers
+
+### What are Containers?
+
+Containers package applications with their dependencies, sharing the host OS kernel.
+
+```
+VMs vs Containers:
+
+Virtual Machines:
+┌────────┬────────┬────────┐
+│  App A │  App B │  App C │
+├────────┼────────┼────────┤
+│ Bins/  │ Bins/  │ Bins/  │
+│ Libs   │ Libs   │ Libs   │
+├────────┼────────┼────────┤
+│Guest OS│Guest OS│Guest OS│
+│ (GB)   │ (GB)   │ (GB)   │
+├────────┴────────┴────────┤
+│      Hypervisor          │
+├──────────────────────────┤
+│      Host OS             │
+├──────────────────────────┤
+│      Infrastructure      │
+└──────────────────────────┘
+
+Containers:
+┌────────┬────────┬────────┐
+│  App A │  App B │  App C │
+├────────┼────────┼────────┤
+│ Bins/  │ Bins/  │ Bins/  │
+│ Libs   │ Libs   │ Libs   │
+├────────┴────────┴────────┤
+│   Container Runtime      │
+│   (Docker, containerd)   │
+├──────────────────────────┤
+│      Host OS             │
+├──────────────────────────┤
+│      Infrastructure      │
+└──────────────────────────┘
+
+Comparison:
+┌──────────────┬──────────┬────────────┐
+│              │   VMs    │ Containers │
+├──────────────┼──────────┼────────────┤
+│ Startup Time │ Minutes  │ Seconds    │
+│ Size         │ GBs      │ MBs        │
+│ Performance  │ Good     │ Native     │
+│ Isolation    │ Strong   │ Moderate   │
+│ Portability  │ Moderate │ High       │
+└──────────────┴──────────┴────────────┘
+```
+
+### Container Technologies
+
+```
+Linux Container Primitives:
+
+1. Namespaces (Isolation):
+┌─────────────────────────────────────┐
+│         Container                    │
+│                                     │
+│  PID Namespace:                     │
+│  • Process sees only its processes  │
+│  • PID 1 inside container           │
+│                                     │
+│  Network Namespace:                 │
+│  • Own network stack                │
+│  • Own IP address                   │
+│                                     │
+│  Mount Namespace:                   │
+│  • Own filesystem view              │
+│                                     │
+│  UTS Namespace:                     │
+│  • Own hostname                     │
+│                                     │
+│  IPC Namespace:                     │
+│  • Own IPC resources                │
+│                                     │
+│  User Namespace:                    │
+│  • Own user/group IDs               │
+└─────────────────────────────────────┘
+
+2. Cgroups (Resource Limits):
+┌─────────────────────────────────────┐
+│         Container                    │
+│                                     │
+│  CPU: 2 cores (200% limit)          │
+│  Memory: 4 GB limit                 │
+│  Disk I/O: 100 MB/s limit           │
+│  Network: 1 Gbps limit              │
+│  PIDs: 1000 max processes           │
+└─────────────────────────────────────┘
+
+3. Union File Systems (Layering):
+┌─────────────────────────────────────┐
+│  Container Layer (R/W)              │
+│  • Application changes              │
+├─────────────────────────────────────┤
+│  Image Layer 3 (R/O)                │
+│  • Application code                 │
+├─────────────────────────────────────┤
+│  Image Layer 2 (R/O)                │
+│  • Dependencies                     │
+├─────────────────────────────────────┤
+│  Image Layer 1 (R/O)                │
+│  • Base OS                          │
+└─────────────────────────────────────┘
+```
+
+### Docker Architecture
+
+```
+Docker Architecture:
+
+┌─────────────────────────────────────────┐
+│         Docker Client                    │
+│  $ docker run nginx                     │
+└────────────────┬────────────────────────┘
+                 │ REST API
+                 ▼
+┌─────────────────────────────────────────┐
+│         Docker Daemon                    │
+│                                          │
+│  ┌────────────────────────────────┐     │
+│  │   Container Management         │     │
+│  └────────────────────────────────┘     │
+│  ┌────────────────────────────────┐     │
+│  │   Image Management             │     │
+│  └────────────────────────────────┘     │
+│  ┌────────────────────────────────┐     │
+│  │   Network Management           │     │
+│  └────────────────────────────────┘     │
+│  ┌────────────────────────────────┐     │
+│  │   Volume Management            │     │
+│  └────────────────────────────────┘     │
+└────────────────┬────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────┐
+│         containerd                       │
+│  (Container Runtime)                    │
+└────────────────┬────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────┐
+│         runc                             │
+│  (OCI Runtime)                          │
+└────────────────┬────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────┐
+│         Linux Kernel                     │
+│  (Namespaces, Cgroups)                  │
+└─────────────────────────────────────────┘
+```
+
+### Container Networking
+
+```
+Container Network Modes:
+
+1. Bridge (Default):
+┌──────────┐  ┌──────────┐  ┌──────────┐
+│Container1│  │Container2│  │Container3│
+│172.17.0.2│  │172.17.0.3│  │172.17.0.4│
+└────┬─────┘  └────┬─────┘  └────┬─────┘
+     │             │             │
+     └─────────────┼─────────────┘
+                   │
+            ┌──────┴──────┐
+            │docker0 bridge│
+            │  172.17.0.1  │
+            └──────┬───────┘
+                   │
+            ┌──────┴───────┐
+            │   Host NIC   │
+            │  192.168.1.10│
+            └──────────────┘
+
+2. Host:
+┌──────────┐
+│Container │
+│ (shares  │
+│ host net)│
+└────┬─────┘
+     │
+┌────┴─────┐
+│ Host NIC │
+│192.168.1.│
+│    10    │
+└──────────┘
+
+3. None:
+┌──────────┐
+│Container │
+│ (no net) │
+└──────────┘
+
+4. Container:
+┌──────────┐  ┌──────────┐
+│Container1│  │Container2│
+│          │  │ (shares  │
+│          │  │  net)    │
+└────┬─────┘  └────┬─────┘
+     └─────────────┘
+     Same network namespace
+
+5. Overlay (Multi-host):
+Host 1:                Host 2:
+┌──────────┐          ┌──────────┐
+│Container1│          │Container2│
+│10.0.0.2  │          │10.0.0.3  │
+└────┬─────┘          └────┬─────┘
+     │                     │
+     └──────VXLAN Tunnel───┘
+```
+
+### Container Storage
+
+```
+Container Storage Options:
+
+1. Volumes (Managed by Docker):
+┌─────────────────────────────────────┐
+│         Container                    │
+│  /app/data → Volume                 │
+└────────────────┬────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────┐
+│  /var/lib/docker/volumes/myvolume   │
+│  (Persists after container deleted) │
+└─────────────────────────────────────┘
+
+2. Bind Mounts (Host directory):
+┌─────────────────────────────────────┐
+│         Container                    │
+│  /app/data → /host/path             │
+└────────────────┬────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────┐
+│  /home/user/data                    │
+│  (Direct host filesystem access)    │
+└─────────────────────────────────────┘
+
+3. tmpfs (Memory):
+┌─────────────────────────────────────┐
+│         Container                    │
+│  /app/temp → tmpfs                  │
+└────────────────┬────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────┐
+│  RAM (volatile, fast)               │
+│  (Lost when container stops)        │
+└─────────────────────────────────────┘
+
+Volume Drivers:
+• local (default)
+• nfs
+• cifs
+• aws-ebs
+• azure-disk
+• gce-pd
+```
+
+## Kubernetes
+
+### Kubernetes Architecture
+
+```
+Kubernetes Cluster:
+
+Control Plane:
+┌─────────────────────────────────────────┐
+│  ┌──────────────────────────────────┐   │
+│  │      API Server                  │   │
+│  │  (kubectl, REST API)             │   │
+│  └────────────┬─────────────────────┘   │
+│               │                          │
+│  ┌────────────┴─────────────────────┐   │
+│  │                                  │   │
+│  ▼                                  ▼   │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐
+│  │Scheduler │  │Controller│  │   etcd   │
+│  │          │  │ Manager  │  │(Key-Value│
+│  └──────────┘  └──────────┘  │  Store)  │
+│                               └──────────┘
+└─────────────────────────────────────────┘
+                 │
+                 │ Commands
+                 ▼
+Worker Nodes:
+┌─────────────────────────────────────────┐
+│  Node 1                                 │
+│  ┌──────────────────────────────────┐   │
+│  │         kubelet                  │   │
+│  │  (Node agent)                    │   │
+│  └──────────────────────────────────┘   │
+│  ┌──────────────────────────────────┐   │
+│  │      Container Runtime           │   │
+│  │  (Docker, containerd, CRI-O)     │   │
+│  └──────────────────────────────────┘   │
+│  ┌──────────┬──────────┬──────────┐     │
+│  │   Pod 1  │   Pod 2  │   Pod 3  │     │
+│  │ ┌──────┐ │ ┌──────┐ │ ┌──────┐ │     │
+│  │ │ Cont │ │ │ Cont │ │ │ Cont │ │     │
+│  │ └──────┘ │ └──────┘ │ └──────┘ │     │
+│  └──────────┴──────────┴──────────┘     │
+└─────────────────────────────────────────┘
+```
+
+### Kubernetes Objects
+
+```
+Kubernetes Object Hierarchy:
+
+Cluster
+  │
+  ├─ Namespace
+  │    │
+  │    ├─ Deployment
+  │    │    │
+  │    │    └─ ReplicaSet
+  │    │         │
+  │    │         └─ Pod
+  │    │              │
+  │    │              └─ Container(s)
+  │    │
+  │    ├─ Service
+  │    │    └─ Endpoints
+  │    │
+  │    ├─ ConfigMap
+  │    ├─ Secret
+  │    ├─ PersistentVolumeClaim
+  │    └─ Ingress
+  │
+  └─ Node
+       └─ Pods
+
+Pod Structure:
+┌─────────────────────────────────────┐
+│            Pod                       │
+│  ┌──────────────────────────────┐   │
+│  │   Container 1 (Main App)     │   │
+│  └──────────────────────────────┘   │
+│  ┌──────────────────────────────┐   │
+│  │   Container 2 (Sidecar)      │   │
+│  └──────────────────────────────┘   │
+│                                     │
+│  Shared:                            │
+│  • Network namespace (localhost)    │
+│  • IPC namespace                    │
+│  • Volumes                          │
+└─────────────────────────────────────┘
+```
+
+### Kubernetes Networking
+
+```
+Kubernetes Network Model:
+
+Requirements:
+1. All pods can communicate without NAT
+2. All nodes can communicate with all pods
+3. Pod sees its own IP (no NAT)
+
+┌─────────────────────────────────────────┐
+│         Cluster Network                  │
+│         (10.0.0.0/16)                   │
+│                                          │
+│  Node 1 (10.0.1.0/24)                   │
+│  ┌────────┬────────┬────────┐           │
+│  │ Pod A  │ Pod B  │ Pod C  │           │
+│  │10.0.1.2│10.0.1.3│10.0.1.4│           │
+│  └────────┴────────┴────────┘           │
+│                                          │
+│  Node 2 (10.0.2.0/24)                   │
+│  ┌────────┬────────┬────────┐           │
+│  │ Pod D  │ Pod E  │ Pod F  │           │
+│  │10.0.2.2│10.0.2.3│10.0.2.4│           │
+│  └────────┴────────┴────────┘           │
+└─────────────────────────────────────────┘
+
+Service Types:
+1. ClusterIP (Internal):
+   ┌─────────┐
+   │ Service │ 10.96.0.10
+   └────┬────┘
+        │ Load balances to:
+        ├─► Pod A (10.0.1.2)
+        ├─► Pod B (10.0.1.3)
+        └─► Pod C (10.0.2.2)
+
+2. NodePort (External):
+   External → Node:30080 → Service → Pods
+
+3. LoadBalancer (Cloud):
+   External → Cloud LB → Nodes → Service → Pods
+
+4. Ingress (HTTP/HTTPS):
+   External → Ingress Controller → Services → Pods
+```
+
+## Performance Comparison
+
+```
+Performance Characteristics:
+
+Startup Time:
+Physical:    Minutes to hours
+VM:          30-60 seconds
+Container:   1-5 seconds
+
+┌────────────────────────────────────┐
+│ Physical ████████████████████████  │
+│ VM       ████                      │
+│ Container █                        │
+└────────────────────────────────────┘
+
+Resource Overhead:
+Physical:    0% (baseline)
+VM:          5-15% (hypervisor)
+Container:   1-3% (runtime)
+
+┌────────────────────────────────────┐
+│ Physical ░                         │
+│ VM       ████                      │
+│ Container █                        │
+└────────────────────────────────────┘
+
+Density (per host):
+Physical:    1 workload
+VM:          10-50 VMs
+Container:   100-1000 containers
+
+┌────────────────────────────────────┐
+│ Physical █                         │
+│ VM       ████████                  │
+│ Container ████████████████████████ │
+└────────────────────────────────────┘
+
+Isolation:
+Physical:    Complete
+VM:          Strong
+Container:   Moderate
+
+Security:
+Physical:    Highest
+VM:          High
+Container:   Medium (improving)
+```
+
+## Use Cases
+
+```
+When to Use What:
+
+Virtual Machines:
+✓ Strong isolation required
+✓ Different OS kernels needed
+✓ Legacy applications
+✓ Compliance requirements
+✓ Long-running workloads
+✗ Resource intensive
+✗ Slow startup
+✗ Lower density
+
+Containers:
+✓ Microservices
+✓ CI/CD pipelines
+✓ Fast scaling
+✓ High density
+✓ Portability
+✗ Weaker isolation
+✗ Same kernel required
+✗ Security concerns
+
+Hybrid (VMs + Containers):
+┌─────────────────────────────────┐
+│         VM 1                     │
+│  ┌──────────┬──────────┐        │
+│  │Container1│Container2│        │
+│  └──────────┴──────────┘        │
+└─────────────────────────────────┘
+
+Benefits:
+• VM isolation
+• Container efficiency
+• Best of both worlds
+```
+
+## Security Considerations
+
+```
+Security Layers:
+
+1. Host Security:
+   • Kernel hardening
+   • SELinux/AppArmor
+   • Secure boot
+   • Regular updates
+
+2. Container Security:
+   • Run as non-root
+   • Read-only filesystem
+   • Drop capabilities
+   • Resource limits
+   • Seccomp profiles
+
+3. Image Security:
+   • Scan for vulnerabilities
+   • Sign images
+   • Use minimal base images
+   • Regular updates
+
+4. Network Security:
+   • Network policies
+   • Service mesh
+   • TLS encryption
+   • Firewall rules
+
+5. Runtime Security:
+   • Monitor behavior
+   • Detect anomalies
+   • Audit logs
+   • Intrusion detection
+
+Security Best Practices:
+┌─────────────────────────────────────┐
+│ ✓ Least privilege                   │
+│ ✓ Defense in depth                  │
+│ ✓ Regular updates                   │
+│ ✓ Vulnerability scanning            │
+│ ✓ Network segmentation              │
+│ ✓ Secrets management                │
+│ ✓ Audit logging                     │
+│ ✗ Run as root                       │
+│ ✗ Privileged containers             │
+│ ✗ Host network mode                 │
+└─────────────────────────────────────┘
+```
+
+## Monitoring & Observability
+
+```
+Monitoring Stack:
+
+┌─────────────────────────────────────┐
+│         Applications                 │
+└────────────┬────────────────────────┘
+             │ Metrics, Logs, Traces
+             ▼
+┌─────────────────────────────────────┐
+│      Container Runtime               │
+│  • CPU, Memory, Network, Disk       │
+└────────────┬────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────┐
+│      Monitoring Tools                │
+│  • Prometheus (metrics)              │
+│  • Grafana (visualization)           │
+│  • ELK Stack (logs)                  │
+│  • Jaeger (tracing)                  │
+└─────────────────────────────────────┘
+
+Key Metrics:
+• Container count
+• CPU usage per container
+• Memory usage per container
+• Network I/O
+• Disk I/O
+• Restart count
+• Health check status
+```
+
+## Summary
+
+Key takeaways for architects:
+
+1. **Virtualization provides strong isolation**
+   - Full OS per VM
+   - Hardware-level isolation
+   - Higher overhead
+
+2. **Containers provide efficiency**
+   - Shared kernel
+   - Fast startup
+   - High density
+
+3. **Choose based on requirements**
+   - Isolation needs
+   - Performance requirements
+   - Operational complexity
+
+4. **Kubernetes for orchestration**
+   - Container management at scale
+   - Self-healing
+   - Auto-scaling
+
+5. **Security is critical**
+   - Multiple layers of defense
+   - Regular updates
+   - Least privilege
+
+## Next Steps
+
+Continue to [Hardware Selection & Capacity Planning](./07-hardware-selection.md) to learn how to choose and size compute resources.
